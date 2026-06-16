@@ -9,3 +9,6 @@ __pycache__/
 # never commit a real Groq API key
 skill/analyze/.groq_key
 .groq_key
+
+# vendored yt-dlp binary is fetched by setup.sh, not committed
+skill/analyze/bin/

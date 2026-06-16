@@ -19,10 +19,58 @@ Outputs a single JSON object to stdout. Usage:
 """
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+# --- Robust tool resolution -------------------------------------------------
+# The skill is invoked by Claude Code in a NON-interactive shell whose PATH is
+# usually minimal (no /opt/homebrew/bin, no ~/.local/bin). It also can't trust a
+# globally-installed yt-dlp to be present, current, or even importable. So we:
+#   1. carry a private yt-dlp inside the skill (scripts/../bin/yt-dlp), and
+#   2. resolve every external tool by absolute path, searching the skill's own
+#      bin/ first, then the usual install locations, then finally PATH.
+SKILL_DIR = Path(__file__).resolve().parent.parent          # ~/.claude/skills/analyze
+BIN_DIR = SKILL_DIR / "bin"
+VENDORED_YTDLP = BIN_DIR / "yt-dlp"
+
+_SEARCH_DIRS = [
+    BIN_DIR,
+    Path.home() / ".local" / "bin",
+    Path("/opt/homebrew/bin"),
+    Path("/usr/local/bin"),
+    Path("/opt/local/bin"),
+    Path("/usr/bin"),
+    Path("/bin"),
+]
+
+
+def resolve_tool(name: str):
+    """Find an executable robustly, independent of an impoverished PATH."""
+    for d in _SEARCH_DIRS:
+        cand = d / name
+        if cand.is_file() and os.access(cand, os.X_OK):
+            return str(cand)
+    return shutil.which(name)
+
+
+def ytdlp_cmd():
+    """Command prefix for invoking yt-dlp, or None if unavailable.
+
+    The vendored copy is a python zipapp — run it with our OWN interpreter
+    (sys.executable, which already has groq installed) so it never depends on
+    a `python3` being on PATH or on the zipapp's shebang resolving correctly.
+    A system yt-dlp is run directly (it has its own interpreter/deps).
+    """
+    if VENDORED_YTDLP.is_file() and os.access(VENDORED_YTDLP, os.X_OK):
+        return [sys.executable, str(VENDORED_YTDLP)]
+    sys_ytdlp = resolve_tool("yt-dlp")
+    return [sys_ytdlp] if sys_ytdlp else None
+
+
+FFMPEG = resolve_tool("ffmpeg")
 
 
 def detect_platform(url: str) -> str:
@@ -42,9 +90,14 @@ def run(cmd):
 
 def ytdlp_download(url: str, workdir: Path) -> dict:
     """Download the video + info json. Returns parsed info dict or {'_error': ...}."""
+    base = ytdlp_cmd()
+    if not base:
+        return {"_error": (
+            "yt-dlp is not installed or not runnable. Run: "
+            "bash ~/.claude/skills/analyze/scripts/setup.sh"
+        )}
     out_tmpl = str(workdir / "video.%(ext)s")
-    cmd = [
-        "yt-dlp",
+    cmd = base + [
         "-f", "mp4/best[ext=mp4]/best",
         "-o", out_tmpl,
         "--write-info-json",
@@ -54,8 +107,11 @@ def ytdlp_download(url: str, workdir: Path) -> dict:
         "--write-subs", "--write-auto-subs",
         "--sub-format", "vtt",
         "--sub-langs", "en.*,en",
-        url,
     ]
+    # Point yt-dlp at our resolved ffmpeg so it works under a minimal PATH too.
+    if FFMPEG:
+        cmd += ["--ffmpeg-location", str(Path(FFMPEG).parent)]
+    cmd.append(url)
     r = run(cmd)
     info_files = list(workdir.glob("video*.info.json"))
     if not info_files:
@@ -101,9 +157,11 @@ def find_video(workdir: Path):
 
 
 def extract_audio(video: Path, workdir: Path):
+    if not FFMPEG:
+        return None  # no ffmpeg -> skip whisper, fall back to captions
     audio = workdir / "audio.mp3"
     r = run([
-        "ffmpeg", "-y", "-i", str(video),
+        FFMPEG, "-y", "-i", str(video),
         "-ar", "16000", "-ac", "1", "-b:a", "64k",
         str(audio),
     ])
