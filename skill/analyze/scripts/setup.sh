@@ -22,11 +22,18 @@ if ! python3 -c "import groq" >/dev/null 2>&1; then
 fi
 python3 -c "import groq" >/dev/null 2>&1 && echo "  groq:    ok" || echo "  groq:    MISSING"
 
-if [ -z "${GROQ_API_KEY:-}" ]; then
+KEY_FILE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/.groq_key"
+if [ -z "${GROQ_API_KEY:-}" ] && [ ! -s "$KEY_FILE" ]; then
   echo ""
-  echo "  ✗ GROQ_API_KEY not set. Free key: https://console.groq.com/keys"
-  echo "    Then: export GROQ_API_KEY=gsk_..."
+  echo "  ✗ No Groq key found. Free key: https://console.groq.com/keys"
+  echo "    Store it where the skill can always read it:"
+  echo "      printf '%s' 'gsk_yourkey' > \"$KEY_FILE\" && chmod 600 \"$KEY_FILE\""
+  echo "    (A GROQ_API_KEY env var also works and takes precedence.)"
   exit 1
 fi
-echo "  GROQ_API_KEY: set ✓"
+if [ -n "${GROQ_API_KEY:-}" ]; then
+  echo "  Groq key: set via GROQ_API_KEY env ✓"
+else
+  echo "  Groq key: set via .groq_key file ✓"
+fi
 echo "→ Ready."

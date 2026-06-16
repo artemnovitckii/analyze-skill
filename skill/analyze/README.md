@@ -25,8 +25,13 @@ In Claude Code:
 ```bash
 cp -r analyze ~/.claude/skills/analyze
 bash ~/.claude/skills/analyze/scripts/setup.sh
-export GROQ_API_KEY=gsk_...   # free key at console.groq.com/keys
+# Store a free key (console.groq.com/keys) where the skill can always read it.
+# A skill-local file is used because Claude Code's non-interactive shell does
+# NOT source ~/.zshrc — an env var exported there would be invisible.
+printf '%s' 'gsk_...' > ~/.claude/skills/analyze/.groq_key && chmod 600 ~/.claude/skills/analyze/.groq_key
 ```
+
+A `GROQ_API_KEY` environment variable also works and takes precedence over the file.
 
 ## How it works
 

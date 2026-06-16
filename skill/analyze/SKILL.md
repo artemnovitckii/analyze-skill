@@ -14,10 +14,13 @@ If the user gives no URL, ask for one.
 
 ## Setup (first run only)
 
-This skill needs `yt-dlp`, `ffmpeg`, the `groq` python package, and a `GROQ_API_KEY`.
-Run `bash ~/.claude/skills/analyze/scripts/setup.sh` once. If `GROQ_API_KEY` is
-missing, stop and tell the user:
-> Set a Groq key first: `export GROQ_API_KEY=gsk_...` (free at console.groq.com/keys).
+This skill needs `yt-dlp`, `ffmpeg`, the `groq` python package, and a Groq key.
+Run `bash ~/.claude/skills/analyze/scripts/setup.sh` once. The key is read from
+(1) the `GROQ_API_KEY` env var, or (2) the skill-local file
+`~/.claude/skills/analyze/.groq_key`. If neither is present, stop and tell the user:
+> Set a free Groq key (console.groq.com/keys). Easiest: save it to the skill file —
+> `printf '%s' 'gsk_...' > ~/.claude/skills/analyze/.groq_key && chmod 600 ~/.claude/skills/analyze/.groq_key`
+> (An exported `GROQ_API_KEY` won't reach this skill — Claude Code's shell doesn't source `~/.zshrc`.)
 
 ## Step 1: Extract
 
@@ -55,14 +58,21 @@ Table: platform, uploader, duration, views, likes, comments, shares.
 Engagement rate = (likes + comments) / views. Skip it if views is null.
 Remember metrics are reliable for YouTube, partial for TikTok, usually `N/A` for Instagram.
 
-### 2.2 Hook (first 3 seconds)
+### 2.2 Full Transcript
+Print the complete transcript **verbatim** from the JSON `transcript` field, inside
+a fenced block or blockquote so it's easy to copy. Do not summarize, trim, or
+paraphrase — show every word. Lead with a one-line source note:
+`Transcript (whisper — actual audio)` or `Transcript (caption — platform subtitles)`.
+If `transcript` is null, write "_No transcript available_" and continue.
+
+### 2.3 Hook (first 3 seconds)
 From the first 1-3 sentences of the transcript:
 - **Hook type**: curiosity gap / shocking stat / bold claim / question / visual hook / pattern interrupt
 - **Why it stops the scroll**: tie it to the exact opening line
 - **Rewrite**: a sharper alternative hook line
 If there's no transcript, infer the hook strategy from title + description and flag low confidence.
 
-### 2.3 Script Structure
+### 2.4 Script Structure
 Segment the transcript by narrative function:
 
 | Segment | Est. timing | Content | Function |
@@ -72,16 +82,16 @@ Typical arc: Hook → Problem/Context → Solution/Reveal → Proof/Example → 
 Analyze pacing: is information density right, where's the turn, where do viewers drop?
 Use the but/therefore lens — flag flat "and then" joins where tension goes slack.
 
-### 2.4 Style Tags
+### 2.5 Style Tags
 - **Presentation**: talking head / voiceover / text-on-screen / skit / montage / screencast / interview
 - **Content type**: educational / entertainment / storytelling / review / tutorial / hot-take / news
 - **Emotional tone**: urgent / curious / funny / shocking / relatable / authoritative
 
-### 2.5 Why It Went Viral
+### 2.6 Why It Went Viral
 2-3 specific reasons. Be concrete. Not "the content is good" but
 "the opening builds contrast with a hard number ($0 → $10K) and lands a clear value promise inside 3 seconds."
 
-### 2.6 Rewrite Directions
+### 2.7 Rewrite Directions
 3 actionable angles. Each with:
 - **Angle**: one line
 - **Hook example**: the actual rewritten hook line
@@ -89,7 +99,8 @@ Use the but/therefore lens — flag flat "and then" joins where tension goes sla
 
 ## Step 3: Output
 
-Output 2.1-2.6 in order, clean markdown with tables and section headings.
+Output 2.1-2.7 in order, clean markdown with tables and section headings.
+Always include the full transcript (2.2) — never replace it with a summary.
 End with one line:
 > Source: yt-dlp + Groq Whisper (`transcript_source`) | Analysis: Claude
 

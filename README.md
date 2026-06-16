@@ -17,15 +17,19 @@ audio* with Groq Whisper — so it works even on videos with no captions.
    ```
 
    That copies the skill + `/analyze` command into `~/.claude/`, installs the
-   `yt-dlp` and `groq` Python packages, and checks for `ffmpeg`.
+   `yt-dlp` and `groq` Python packages, checks for `ffmpeg`, and **prompts you to
+   paste a free Groq API key** (get one at <https://console.groq.com/keys>).
 
-3. Get a **free** Groq API key at <https://console.groq.com/keys>, then:
+   The key is saved to `~/.claude/skills/analyze/.groq_key` (chmod 600) — a
+   skill-local file, **not** `~/.zshrc`. This matters: Claude Code runs each
+   command in a *non-interactive* shell that does **not** source `~/.zshrc`, so a
+   key exported there is invisible to the skill. The local file always works.
 
-   ```bash
-   echo 'export GROQ_API_KEY=gsk_yourkey' >> ~/.zshrc && source ~/.zshrc
-   ```
+3. Restart Claude Code.
 
-4. Restart Claude Code.
+> Prefer an env var? Set `GROQ_API_KEY` in `~/.claude/settings.json` under an
+> `"env": { ... }` block (Claude Code injects that into every command). A
+> `GROQ_API_KEY` environment variable takes precedence over the `.groq_key` file.
 
 ## Use
 

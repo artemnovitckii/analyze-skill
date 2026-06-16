@@ -42,15 +42,29 @@ else
 fi
 
 # 4. Groq API key
+# Stored in a skill-local file so the skill works inside Claude Code, which runs
+# a NON-interactive shell that does not source ~/.zshrc. The skill also honors a
+# GROQ_API_KEY env var (that takes precedence) if you prefer to set one.
 echo ""
-if [ -z "${GROQ_API_KEY:-}" ]; then
-  echo "  ⚠ One last step — set a FREE Groq API key (https://console.groq.com/keys):"
-  echo ""
-  echo "      echo 'export GROQ_API_KEY=gsk_yourkey' >> ~/.zshrc && source ~/.zshrc"
-  echo ""
-  echo "    (Without it, the skill falls back to captions only — no real audio transcription.)"
+KEY_FILE="$CLAUDE/skills/analyze/.groq_key"
+KEY="${GROQ_API_KEY:-}"
+if [ -z "$KEY" ] && [ -s "$KEY_FILE" ]; then
+  echo "  ✓ Groq key already stored at ~/.claude/skills/analyze/.groq_key"
 else
-  echo "  ✓ GROQ_API_KEY is set."
+  if [ -z "$KEY" ]; then
+    echo "  One last step — get a FREE Groq API key: https://console.groq.com/keys"
+    printf "  Paste it here (or press Enter to skip): "
+    read -r KEY || true
+  fi
+  if [ -n "$KEY" ]; then
+    printf '%s\n' "$KEY" > "$KEY_FILE"
+    chmod 600 "$KEY_FILE"
+    echo "  ✓ key stored → ~/.claude/skills/analyze/.groq_key (chmod 600)"
+  else
+    echo "  ⚠ No key set. Add one anytime:"
+    echo "      printf '%s' 'gsk_yourkey' > \"$KEY_FILE\" && chmod 600 \"$KEY_FILE\""
+    echo "    (Without it, the skill falls back to captions only — no real audio transcription.)"
+  fi
 fi
 
 echo ""

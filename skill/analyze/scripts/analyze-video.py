@@ -110,9 +110,32 @@ def extract_audio(video: Path, workdir: Path):
     return audio if (r.returncode == 0 and audio.exists()) else None
 
 
+def load_groq_key():
+    """Resolve the Groq key independent of shell init files.
+
+    Precedence:
+      1. GROQ_API_KEY environment variable
+      2. skill-local key file: ~/.claude/skills/analyze/.groq_key
+    Claude Code runs a non-interactive shell that does NOT source ~/.zshrc,
+    so the local key file is the reliable path for that environment.
+    """
+    key = os.environ.get("GROQ_API_KEY")
+    if key and key.strip():
+        return key.strip()
+    key_file = Path(__file__).resolve().parent.parent / ".groq_key"
+    if key_file.exists():
+        val = key_file.read_text(encoding="utf-8").strip()
+        # accept a bare key or "GROQ_API_KEY=..." / "export GROQ_API_KEY=..."
+        if "=" in val:
+            val = val.split("=", 1)[1]
+        val = val.strip().strip('"').strip("'")
+        return val or None
+    return None
+
+
 def whisper_transcribe(audio: Path):
     """Transcribe via Groq. Returns (text, source) or (None, reason)."""
-    key = os.environ.get("GROQ_API_KEY")
+    key = load_groq_key()
     if not key:
         return None, "GROQ_API_KEY not set"
     try:

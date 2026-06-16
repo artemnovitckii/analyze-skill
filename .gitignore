@@ -5,3 +5,7 @@ __pycache__/
 *.mp3
 *.wav
 *.m4a
+
+# never commit a real Groq API key
+skill/analyze/.groq_key
+.groq_key
