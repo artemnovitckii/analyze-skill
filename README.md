@@ -9,27 +9,36 @@ audio* with Groq Whisper — so it works even on videos with no captions.
 
 ## Install (one command)
 
-1. Unzip this folder anywhere.
-2. In a terminal, run:
+In a terminal:
 
-   ```bash
-   bash install.sh
-   ```
+```bash
+git clone https://github.com/artemnovitckii/analyze-skill && bash analyze-skill/install.sh
+```
 
-   That copies the skill + `/analyze` command into `~/.claude/`, installs the
-   `yt-dlp` and `groq` Python packages, checks for `ffmpeg`, and **prompts you to
-   paste a free Groq API key** (get one at <https://console.groq.com/keys>).
+The installer copies the skill + `/analyze` command into `~/.claude/`, vendors a
+private self-updating `yt-dlp` into the skill, installs `ffmpeg` + the `groq`
+package, verifies everything runs, and **prompts you to paste a free Groq API
+key** (get one at <https://console.groq.com/keys>). Then restart Claude Code.
 
-   The key is saved to `~/.claude/skills/analyze/.groq_key` (chmod 600) — a
-   skill-local file, **not** `~/.zshrc`. This matters: Claude Code runs each
-   command in a *non-interactive* shell that does **not** source `~/.zshrc`, so a
-   key exported there is invisible to the skill. The local file always works.
+### Hands-off / non-interactive install
 
-3. Restart Claude Code.
+Pass the key as a flag (no prompt) — handy when you ask Claude Code to install it
+for you:
 
-> Prefer an env var? Set `GROQ_API_KEY` in `~/.claude/settings.json` under an
-> `"env": { ... }` block (Claude Code injects that into every command). A
-> `GROQ_API_KEY` environment variable takes precedence over the `.groq_key` file.
+```bash
+git clone https://github.com/artemnovitckii/analyze-skill && \
+  bash analyze-skill/install.sh --key gsk_yourkey
+```
+
+A `GROQ_API_KEY` environment variable works the same way. Either is saved to
+`~/.claude/skills/analyze/.groq_key` (chmod 600) — a skill-local file, **not**
+`~/.zshrc`. This matters: Claude Code runs each command in a *non-interactive*
+shell that does **not** source `~/.zshrc`, so a key exported there is invisible
+to the skill. The local file always works.
+
+> Prefer an env var at runtime? Set `GROQ_API_KEY` in `~/.claude/settings.json`
+> under an `"env": { ... }` block (Claude Code injects that into every command).
+> A `GROQ_API_KEY` environment variable takes precedence over the `.groq_key` file.
 
 ## Use
 
