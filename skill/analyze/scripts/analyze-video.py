@@ -103,6 +103,11 @@ def ytdlp_download(url: str, workdir: Path) -> dict:
         "--write-info-json",
         "--no-playlist",
         "--no-warnings",
+        # Subtitles are only a FALLBACK transcript source (Whisper is primary),
+        # so a subtitle download failure must never abort the whole job. Without
+        # this, a 429 on the subtitle request kills the run and no video/metadata
+        # is produced at all. --ignore-errors downgrades it to a warning.
+        "--ignore-errors",
         # write any available captions/subs as a fallback transcript source
         "--write-subs", "--write-auto-subs",
         "--sub-format", "vtt",
