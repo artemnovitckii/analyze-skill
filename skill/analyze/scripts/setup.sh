@@ -27,18 +27,32 @@ ytdlp_runs () {  # $1 = path to a yt-dlp; run it with our python (zipapp) to tes
   [ -n "$PY" ] && [ -f "$1" ] && "$PY" "$1" --version >/dev/null 2>&1
 }
 
-if ytdlp_runs "$YTDLP"; then
-  echo "  yt-dlp:  updating private copy..."
-  "$PY" "$YTDLP" -U >/dev/null 2>&1 || true
-else
-  echo "  yt-dlp:  installing private copy into the skill..."
-  URL="https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp"
-  if command -v curl >/dev/null 2>&1; then
-    curl -fsSL "$URL" -o "$YTDLP" 2>/dev/null || true
-  elif command -v wget >/dev/null 2>&1; then
-    wget -q "$URL" -O "$YTDLP" 2>/dev/null || true
+# Always fetch a FRESH copy from the NIGHTLY channel. Rationale:
+#   • Instagram/TikTok extractors break constantly and fixes land in nightly
+#     first — the STABLE release can be weeks behind and fail with
+#     "empty media response" on reels that work fine on nightly.
+#   • `yt-dlp -U` proved unreliable for the vendored zipapp (it targets stable
+#     and silently no-ops when run via an external interpreter), so we don't
+#     trust self-update — we just re-download each setup. It's ~3MB.
+# If the download fails but an existing copy still runs, we keep the old one.
+URL="https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp"
+echo "  yt-dlp:  fetching latest nightly into the skill..."
+TMP_YTDLP="$YTDLP.download"
+DL_OK=0
+if command -v curl >/dev/null 2>&1; then
+  curl -fsSL "$URL" -o "$TMP_YTDLP" 2>/dev/null && DL_OK=1
+elif command -v wget >/dev/null 2>&1; then
+  wget -q "$URL" -O "$TMP_YTDLP" 2>/dev/null && DL_OK=1
+fi
+if [ "$DL_OK" -eq 1 ]; then
+  chmod +x "$TMP_YTDLP" 2>/dev/null || true
+  if ytdlp_runs "$TMP_YTDLP"; then
+    mv -f "$TMP_YTDLP" "$YTDLP"
+  else
+    rm -f "$TMP_YTDLP"  # downloaded but won't run — keep whatever we had
   fi
-  chmod +x "$YTDLP" 2>/dev/null || true
+else
+  rm -f "$TMP_YTDLP" 2>/dev/null || true  # offline — fall through to existing copy
 fi
 
 if ytdlp_runs "$YTDLP"; then
